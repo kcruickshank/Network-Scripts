@@ -16,7 +16,7 @@ def main():
         # Check if authentication is ok
         authenticated = check_authentication(username,password)
 
-    print('\nEnd of Test.')
+    print('\nEnd of Test and it works.')
 
 def get_logon_details():
     username = input('Enter Username : ')
