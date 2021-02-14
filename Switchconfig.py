@@ -6,7 +6,7 @@ from os import name, system
 
 # Global Variables
 counter = 0
-new = 1
+
 
 def main():
     authenticated = False
