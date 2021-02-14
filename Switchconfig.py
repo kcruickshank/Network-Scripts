@@ -1,4 +1,5 @@
 import netmiko
+from netmiko import ConnectHandler
 import getpass
 import os
 from os import name, system
@@ -6,8 +7,14 @@ from os import name, system
 
 # Global Variables
 counter = 0
-new_var = 1
 
+# Define a Cisco Switch Connection Handeller
+cisco_switch = {
+    'device_type': 'cisco_ios',
+    'host': ip_address,
+    'username': username,
+    'password': password,
+}
 
 
 def main():
@@ -28,20 +35,24 @@ def get_logon_details():
 
 def check_authentication(username,password):
     global counter
-    if username == 'Kenny' and password == 'cisco':
+    # Attempt an authentication to the network Device
+    try:
+        net_connect = ConnectHandler(**cisco_switch)
         print('Success your in!')
         return True
-    else:
+    except netmiko.NetMikoAuthenticationException:
+        # Check Counter value to allow 3 attempts to authenticate before exiting the program
+        if counter == 0:
+            print('Authentication failed try again..\n')
+            counter += 1
         if counter == 1:
             print("Authentication failed this is your last attempt make it count!\n")
             counter += 1
         elif counter > 1:
             print('\nAuthentication failed, program will now exit.')
             input('\nPress Enter key to exit')
-            raise SystemExit
-        else:    
-            print('Authentication failed try again..\n')
-            counter += 1
+            raise SystemExit  
+            
 
 def clear_screen():
     if name == 'nt':
