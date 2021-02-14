@@ -6,6 +6,8 @@ from os import name, system
 
 # Global Variables
 counter = 0
+new = 1
+hfhfh = 44
 
 
 def main():
