@@ -27,8 +27,8 @@ import datetime as datetime
 # Define Variables for Solarwinds
 #npm_server = '10.251.6.50'
 npm_server = 'ar50npm.ads.muellergroup.com'
-username = "mapsacc"
-password = "nMUDIXKZ3V"
+username = "****"
+password = "****"
 swis_npm = SwisClient(npm_server,username,password)
 
 # Define some Variables for DNS Updates
