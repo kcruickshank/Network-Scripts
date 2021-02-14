@@ -19,6 +19,7 @@ cisco_switch = {
 
 def main():
     authenticated = False
+    # Loop the 2 functions to get the username and password 
     while not authenticated:
         # Get the user logon details
         username, password = get_logon_details()
