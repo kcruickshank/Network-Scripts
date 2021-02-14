@@ -7,7 +7,6 @@ from os import name, system
 # Global Variables
 counter = 0
 
-
 def main():
     authenticated = False
     while not authenticated:
