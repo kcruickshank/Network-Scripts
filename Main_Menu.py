@@ -2,7 +2,8 @@ import sys
 import os, fnmatch
 import csv
 import socket
-import easygui
+#
+# import easygui
 from sys import platform
 
 
@@ -16,16 +17,13 @@ def main_menu():
 
 def main():
     option = main_menu()
+    #option = "1"
 
     if option == "1":
-
-
-
-
-    print("You Selected Option " + str(option))
-    input("\nPress Enter to continue..")
-    os.system('clear')
-    main()
+        print("You Selected Option " + str(option))
+        input("\nPress Enter to continue..")
+        os.system('clear')
+        main()
 
 if __name__ == "__main__":
     main()
