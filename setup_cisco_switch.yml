@@ -1,0 +1,129 @@
+---
+- name: Configure Cisco IOS Switch
+  hosts: all # Target all hosts defined in the inventory, or a specific group
+  gather_facts: false # Skip gathering facts about the remote system, as it's not needed for network modules
+  connection: network_cli # Use the network_cli connection method for Cisco IOS devices
+  become: yes # Escalate privileges on the remote device
+  become_method: enable # Use 'enable' mode for privilege escalation
+
+  # Global variables for the playbook
+  vars:
+    ansible_network_os: cisco.ios.ios # Specify the network operating system for Cisco IOS devices
+
+  # Prompt user for input to define variables used in the playbook
+  vars_prompt:
+    - name: switch_hostname
+      prompt: "Enter the desired hostname for the switch"
+      private: no # Input will be visible
+    - name: vlan_id
+      prompt: "Enter the Management VLAN ID (e.g., 100)"
+      private: no
+    - name: management_ip_address
+      prompt: "Enter the Management IP Address for VLAN {{ vlan_id }}"
+      private: no
+    - name: management_ip_subnet_mask
+      prompt: "Enter the Management Subnet Mask for VLAN {{ vlan_id }} (e.g., 255.255.255.0)"
+      private: no
+    - name: default_gateway_ip
+      prompt: "Enter the Default Gateway IP Address"
+      private: no
+    - name: admin_username
+      prompt: "Enter the admin username"
+      private: no
+    - name: admin_password
+      prompt: "Enter the admin password (will be hidden)"
+      private: yes # Input will be hidden for security
+    - name: vty_acl_name
+      prompt: "Enter the name for the VTY access control list (e.g., VTY_ACCESS)"
+      private: no
+    - name: vty_acl_permit_source
+      prompt: "Enter the source network/IP to permit for VTY access (e.g., 10.0.0.0/24 or 'any')"
+      private: no
+
+  tasks:
+    # Task 1: Configure the hostname of the switch
+    - name: Set switch hostname
+      cisco.ios.ios_hostname:
+        config:
+          hostname: "{{ switch_hostname }}" # Use the user-provided hostname
+        state: present # Ensures the hostname is set to the desired value
+
+    # Task 2: Ensure the management VLAN exists
+    - name: Ensure management VLAN exists
+      cisco.ios.ios_vlans:
+        config:
+          - name: "VLAN{{ vlan_id }}" # Name the VLAN (e.g., VLAN100)
+            vlan_id: "{{ vlan_id }}" # Use the user-provided VLAN ID
+        state: present # Ensures the VLAN exists with the specified ID and name
+
+    # Task 3: Configure the IP address for the management VLAN interface
+    - name: Configure management interface IP address
+      cisco.ios.ios_l3_interfaces:
+        config:
+          - name: "Vlan{{ vlan_id }}" # Target the SVI (Switched Virtual Interface) for the management VLAN
+            ipv4:
+              - address: "{{ management_ip_address }}/{{ management_ip_subnet_mask }}" # Set IP and subnet mask
+        state: present # Ensures the L3 interface is configured with the specified IP
+
+    # Task 4: Configure the default gateway for the switch
+    - name: Set default gateway
+      cisco.ios.ios_static_routes:
+        config:
+          address_families:
+            - afi: ipv4
+              safi: unicast
+              routes:
+                - dest: 0.0.0.0/0 # Represents the default route
+                  next_hops:
+                    - forward_router_address: "{{ default_gateway_ip }}" # Use user-provided gateway IP
+        state: merged # Merges this route with existing static routes, or creates it if not present
+
+    # Task 5: Create a local administrative user
+    - name: Create admin user
+      cisco.ios.ios_users:
+        config:
+          users:
+            - name: "{{ admin_username }}" # Use user-provided username
+              privilege: 15 # Set privilege level to 15 (full administrative rights)
+              password: "{{ admin_password }}" # Use user-provided password
+              password_type: secret # Store the password as a hashed secret
+        state: merged # Merges this user configuration with existing users, or creates if not present
+
+    # Task 6.1: Create an Access Control List (ACL) to permit a specific source for VTY access
+    # This task runs only if vty_acl_permit_source is NOT 'any'
+    - name: Create ACL for VTY access
+      cisco.ios.ios_acls:
+        config:
+          - name: "{{ vty_acl_name }}" # Use user-provided ACL name
+            acl_type: standard # Create a standard ACL
+            aces:
+              - grant: permit
+                source:
+                  address: "{{ vty_acl_permit_source }}" # Permit the specified source network/IP
+        state: merged # Merges this ACL configuration, or creates if not present
+      when: "vty_acl_permit_source != 'any'" # Conditional execution
+
+    # Task 6.2: Create an Access Control List (ACL) to permit any source for VTY access
+    # This task runs only if vty_acl_permit_source IS 'any'
+    - name: Create ACL for VTY access (permit any)
+      cisco.ios.ios_acls:
+        config:
+          - name: "{{ vty_acl_name }}" # Use user-provided ACL name
+            acl_type: standard # Create a standard ACL
+            aces:
+              - grant: permit
+                source:
+                  any: true # Permit any source IP address
+        state: merged # Merges this ACL configuration, or creates if not present
+      when: "vty_acl_permit_source == 'any'" # Conditional execution
+
+    # Task 7: Apply the created ACL to the VTY (virtual teletype) lines for remote access
+    - name: Apply ACL to VTY lines
+      cisco.ios.ios_line:
+        config:
+          lines: "vty 0 15" # Target VTY lines 0 through 15
+          access_class:
+            name: "{{ vty_acl_name }}" # Apply the ACL created in the previous step
+            direction: "in" # Apply the ACL to inbound traffic
+          transport_input: "ssh telnet" # Allow both SSH and Telnet as transport protocols
+        state: present # Ensures VTY lines are configured as specified
