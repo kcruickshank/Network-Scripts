@@ -65,18 +65,13 @@
               - address: "{{ management_ip_address }}/{{ management_ip_subnet_mask }}" # Set IP and subnet mask
         state: present # Ensures the L3 interface is configured with the specified IP
 
-    # Task 4: Configure the default gateway for the switch
-    - name: Set default gateway
-      cisco.ios.ios_static_routes:
-        config:
-          address_families:
-            - afi: ipv4
-              safi: unicast
-              routes:
-                - dest: 0.0.0.0/0 # Represents the default route
-                  next_hops:
-                    - forward_router_address: "{{ default_gateway_ip }}" # Use user-provided gateway IP
-        state: merged # Merges this route with existing static routes, or creates it if not present
+    # Task 4: Configure the default gateway for the switch (using 'ip default-gateway' command)
+    # Note: This command is typically used on Layer 2 switches or when IP routing is disabled.
+    # For Layer 3 switches with 'ip routing' enabled, a static route (0.0.0.0/0) is preferred.
+    - name: Set default gateway (using ip default-gateway command)
+      cisco.ios.ios_config:
+        commands:
+          - "ip default-gateway {{ default_gateway_ip }}" # Use user-provided gateway IP
 
     # Task 5: Create a local administrative user
     - name: Create admin user
